@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>وكالة التخصيص والإستدامة المالية - 2026م</title>
+    <!-- استيراد خط Cairo من Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- ===== منع الحفظ (Save) وفتح مصدر الصفحة عبر JS ===== -->
+    <script>
+    (function () {
+        'use strict';
+
+        // رسالة تنبيه خفيفة (اختيارية) عند محاولة الحفظ
+        var lastToast = 0;
+        function notify(msg) {
+            var now = Date.now();
+            if (now - lastToast < 1500) return;
+            lastToast = now;
+            try {
+                var d = document.createElement('div');
+                d.textContent = msg;
+                d.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);' +
+                    'background:#222;color:#fff;padding:10px 18px;border-radius:8px;z-index:2147483647;' +
+                    'font:600 14px Cairo,Tahoma,sans-serif;direction:rtl;box-shadow:0 4px 12px rgba(0,0,0,.4);';
+                (document.body || document.documentElement).appendChild(d);
+                setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 1800);
+            } catch (e) {}
+        }
+
+        function block(e, msg) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            if (msg) notify(msg);
+            return false;
+        }
+
+        // اختصارات لوحة المفاتيح: نستخدم e.code ليعمل المنع حتى مع لوحة المفاتيح العربية
+        function onKey(e) {
+            var ctrl = e.ctrlKey || e.metaKey;   // Ctrl على ويندوز/لينكس، Cmd على ماك
+            var code = e.code;
+            var key  = (e.key || '').toLowerCase();
+
+            // Ctrl+S / Ctrl+Shift+S / Cmd+S  (حفظ الصفحة)
+            if (ctrl && (code === 'KeyS' || key === 's' || key === 'س')) {
+                return block(e, 'الحفظ غير مسموح');
+            }
+            // Ctrl+U (عرض مصدر الصفحة) / Ctrl+Alt+U على ماك
+            if (ctrl && (code === 'KeyU' || key === 'u')) {
+                return block(e, 'غير مسموح');
+            }
+            // Ctrl+P (الطباعة / الحفظ كـ PDF) - لا يؤثر على أزرار الطباعة داخل التطبيق
+            if (ctrl && (code === 'KeyP' || key === 'p')) {
+                return block(e, 'الطباعة المباشرة غير مسموحة');
+            }
+            // F12 وأدوات المطور: Ctrl+Shift+I / J / C  و Cmd+Alt+I على ماك
+            if (code === 'F12' || key === 'f12') {
+                return block(e);
+            }
+            if (ctrl && e.shiftKey && (code === 'KeyI' || code === 'KeyJ' || code === 'KeyC')) {
+                return block(e);
+            }
+            if (e.metaKey && e.altKey && (code === 'KeyI' || code === 'KeyJ' || code === 'KeyU')) {
+                return block(e);
+            }
+        }
+        window.addEventListener('keydown', onKey, true);
+        window.addEventListener('keyup', function (e) {
+            // بعض المتصفحات تنفذ الحفظ عند keyup/keypress؛ نمنعها أيضاً
+            var ctrl = e.ctrlKey || e.metaKey;
+            if (ctrl && (e.code === 'KeyS' || e.code === 'KeyU' || e.code === 'KeyP')) block(e);
+        }, true);
+        window.addEventListener('keypress', function (e) {
+            var ctrl = e.ctrlKey || e.metaKey;
+            if (ctrl && (e.code === 'KeyS' || e.code === 'KeyU' || e.code === 'KeyP')) block(e);
+        }, true);
+
+        // منع قائمة الزر الأيمن (حفظ باسم / عرض المصدر / حفظ الصورة) والضغط المطوّل على الجوال
+        window.addEventListener('contextmenu', function (e) { return block(e); }, true);
+
+        // منع سحب الصور/الروابط إلى سطح المكتب لحفظها
+        window.addEventListener('dragstart', function (e) { return block(e); }, true);
+
+        // منع الطباعة/الحفظ كـ PDF من نافذة الصفحة الرئيسية فقط
+        // (أزرار الطباعة داخل التطبيق تفتح نافذة مستقلة ولا تتأثر بهذا)
+        var st = document.createElement('style');
+        st.textContent = '@media print { html, body { display: none !important; } }';
+        document.head.appendChild(st);
+
+        // تعطيل الأمر execCommand('SaveAs') القديم (متصفحات IE القديمة)
+        try {
+            var _exec = document.execCommand;
+            document.execCommand = function (cmd) {
+                if (String(cmd).toLowerCase() === 'saveas') return false;
+                return _exec.apply(document, arguments);
+            };
+        } catch (e) {}
+    })();
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2canvas for map/report export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Chart.js for charts tab -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <!-- Chart.js DataLabels plugin for percentage display -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- واجهة تسجيل الدخول الاحترافية -->
+<div id="loginOverlay">
+    <div class="login-card">
+        <h2>وكالة التخصيص والإستدامة المالية </h2>
+        <p>يرجى تسجيل الدخول للمتابعة إلى الخريطة الاستثمارية</p>
+        <div class="login-group">
+            <label for="loginUser" style="color: #023059;">اسم المستخدم:</label>
+            <input type="text" id="loginUser" placeholder="أدخل اسم المستخدم" autocomplete="off">
+        </div>
+        <div class="login-group">
+            <label for="loginPass" style="color: #023059;">كلمة المرور:</label>
+            <input type="password" id="loginPass" placeholder="أدخل كلمة المرور" autocomplete="off">
+        </div>
+        <div class="login-error" id="loginError">اسم المستخدم أو كلمة المرور غير صحيحة!</div>
+        <button class="login-btn" id="loginSubmitBtn">تسجيل الدخول</button>
+    </div>
+</div>
+
+<div class="kpi-container" id="kpiContainer"></div>
+
+<div class="app-container">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-header-title">
+                <img src="https://lh3.googleusercontent.com/d/1vvmJeSZFmv8qVWVVRXR8a27x0k_DeQis" id="municipalityLogo" alt="شعار وكالة تنمية الاستثمارات">
+                <h2>وكالة التخصيص والإستدامة المالية </h2>
+            </div>
+            <div class="top-action-btns">
+                <button class="icon-btn" id="themeToggleBtn" title="تغيير الوضع المظلم/الفاتح">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.38 5.38 0 0 1-4.4 4.4 5.38 5.38 0 0 1-4.4-4.4A9 9 0 0 1 12 3z"/></svg>
+                </button>
+                <button class="icon-btn" id="shareBtn" title="مشاركة رابط التصفية">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div>
+            <button class="reset-btn" id="resetFiltersBtn" title="إلغاء التصفية وإعادة تعيين الاختيارات">⦿ الرئيسية</button>
+        </div>
+
+        <div class="tabs-header">
+            <button class="tab-btn active" data-tab="tabPoints">العـقـــود</button>
+            <button class="tab-btn" data-tab="tabPolygons">الأصـــول</button>
+            <button class="tab-btn" data-tab="tabForas">الفـــرص</button>
+            <button class="tab-btn" data-tab="tabZwaed">الزوائـــد</button>
+        </div>
+
+        <div class="tab-content active" id="tabPoints">
+            <!-- حاوية مجموعة تصنيف سريان العقد -->
+            <div class="category-group-box">
+                <label>
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    تصنيف العقود حسب سريان العقد:
+                </label>
+                <div class="categories-bar" id="statusChips">
+                    <div class="cat-chip active" data-type="status" data-val="all">جميــــع العقــــــــود</div>
+                    <div class="cat-chip sari" data-type="status" data-val="ساري">عقــــود ساريـــــة</div>
+                    <div class="cat-chip muntahi" data-type="status" data-val="منتهي">عقــــود منتهيـــــة</div>
+                </div>
+            </div>
+
+            <!-- حاوية مجموعة تصنيف نوع العقد -->
+            <div class="category-group-box">
+                <label>
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+                    تصنيف العقود حسب نوع العقد:
+                </label>
+                <div class="categories-bar" id="typeChips">
+                    <div class="cat-chip active" data-type="contractType" data-val="all">جميــــع العقــــــــود</div>
+                </div>
+            </div>
+
+            <!-- حاوية مجموعة البحث والترتيب والنتائج الموحدة -->
+            <div class="category-group-box">
+                <label>
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    البحث والترتيب وعرض النتائج:
+                </label>
+                <div style="display: flex; gap: 6px;">
+                    <div style="flex: 1;">
+                        <label for="searchFieldPoint" style="font-size: 0.75rem;">البحث في حقل:</label>
+                        <select id="searchFieldPoint" style="padding: 6px; font-size: 0.75rem;">
+                            <option value="all">جميع البيانات</option>
+                            <option value="رقم العقد">رقم العقد</option>
+                            <option value="اسم المستثمر">اسم المستثمر</option>
+                            <option value="تاريخ بداية العقد">تاريخ بداية العقد</option>
+                            <option value="تاريخ نهاية العقد">تاريخ نهاية العقد</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1.5;">
+                        <label for="searchInputPoint" style="font-size: 0.75rem;">كلمة البحث:</label>
+                        <input type="text" id="searchInputPoint" placeholder="اكتب للبحث..." style="padding: 6px; font-size: 0.75rem;">
+                    </div>
+                </div>
+                <div>
+                    <label for="sortFieldSelect" style="font-size: 0.75rem;">ترتيب النتائج:</label>
+                    <select id="sortFieldSelect" style="padding: 6px; font-size: 0.75rem;">
+                        <option value="default">الترتيب الافتراضي</option>
+                        <option value="valueDesc">القيمة: الأعلى للأقل</option>
+                        <option value="valueAsc">القيمة: الأقل للأعلى</option>
+                        <option value="expirySoon">تاريخ الانتهاء: الأقرب</option>
+                        <option value="investor">اسم المستثمر أبجدياً</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 0.75rem;">نتائج البحث (<span id="resultCount">0</span>):</label>
+                    <div class="results-container" id="resultsList">
+                        <div style="padding: 8px; text-align: center; color: var(--text-color); opacity: 0.6; font-size: 0.75rem;">جاري تحميل البيانات...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="tabPolygons">
+            <!-- حاوية مجموعة تصنيف الأراضي حسب حالة الاستثمار -->
+            <div class="category-group-box">
+                <label>تصنيف الأصول حسب حالة الاستثمار:</label>
+                <div class="categories-bar" id="landStatusChips">
+                    <div class="cat-chip active" data-type="landStatus" data-val="all">جميع الأصول الإستثمارية</div>
+                </div>
+            </div>
+
+            <!-- حاوية تصنيف الأصول حسب البلدية المضافة حديثاً بعد تصنيف حالة الاستثمار -->
+            <div class="category-group-box">
+                <label>تصنيف الأصول حسب البلدية:</label>
+                <div class="categories-bar" id="municipalityChips">
+                    <div class="cat-chip active" data-type="municipality" data-val="all">جميع البلديات</div>
+                </div>
+            </div>
+
+            <!-- حاوية بحث وأصول الأراضي المدمجة مع الترتيب والنتائج في مربع واحد -->
+            <div class="category-group-box">
+                <label>
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    بحث وأصول الأراضي:
+                </label>
+                <div class="search-group">
+                    <label for="searchFieldPolygon" style="font-size: 0.75rem;">البحث في حقل:</label>
+                    <select id="searchFieldPolygon" style="padding: 6px; font-size: 0.75rem;">
+                        <option value="رقم قطعة الأرض من المخطط">رقم قطعة الأرض من المخطط</option>
+                        <option value="رقم المخطط">رقم المخطط</option>
+                        <option value="حالة الاستثمار">حالة الاستثمار</option>
+                        <option value="البلدية">البلدية</option>
+                        <option value="SHAPE_Area">SHAPE_Area</option>
+                    </select>
+                </div>
+
+                <div class="search-group" id="normalSearchGroupPolygon">
+                    <label for="searchInputPolygon" style="font-size: 0.75rem;">كلمة البحث:</label>
+                    <input type="text" id="searchInputPolygon" placeholder="اكتب للبحث..." style="padding: 6px; font-size: 0.75rem;">
+                </div>
+
+                <div class="search-group" id="areaSearchGroupPolygon" style="display: none;">
+                    <label style="font-size: 0.75rem;">معامل المساحة:</label>
+                    <div style="display: flex; gap: 4px; margin-bottom: 4px;">
+                        <select id="areaOperator" style="flex: 1; padding: 6px; font-size: 0.75rem;">
+                            <option value="=">يساوي</option>
+                            <option value=">">أكبر من</option>
+                            <option value="<">أصغر من</option>
+                            <option value="between">بين قيمتين</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 4px;" id="areaInputsContainer">
+                        <input type="number" id="areaVal1" placeholder="القيمة" style="flex: 1; padding: 6px; font-size: 0.75rem;">
+                        <input type="number" id="areaVal2" placeholder="إلى" style="flex: 1; display: none; padding: 6px; font-size: 0.75rem;">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="sortFieldSelectPolygon" style="font-size: 0.75rem;">ترتيب الأصول:</label>
+                    <select id="sortFieldSelectPolygon" style="padding: 6px; font-size: 0.75rem;">
+                        <option value="default">الترتيب الافتراضي</option>
+                        <option value="areaDesc">المساحة: الأكبر للأصغر</option>
+                        <option value="areaAsc">المساحة: الأصغر للأكبر</option>
+                        <option value="plotNo">رقم القطعة أبجدياً</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="font-size: 0.75rem;">نتائج البحث للأصول (<span id="resultCountPolygon">0</span>):</label>
+                    <div class="results-container" id="resultsListPolygon">
+                        <div style="padding: 8px; text-align: center; color: var(--text-color); opacity: 0.6; font-size: 0.75rem;">جاري تحميل البيانات...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- التبويب الثالث: الفرص الاستثمارية -->
+        <div class="tab-content" id="tabForas">
+            <!-- الكاتيجوري الأول: حالة الفرصة -->
+            <div class="category-group-box">
+                <label>
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    تصنيف الفرص حسب حالة الفرصة:
+                </label>
+                <div class="categories-bar" id="forasStatusChips">
+                    <div class="cat-chip active" data-type="forasStatus" data-val="all">جميع الفـــــرص</div>
+                </div>
+            </div>
+
+            <!-- الكاتيجوري الثاني: النشاط الرئيسي (قائمة منسدلة) -->
+            <div class="category-group-box">
+                <label for="forasActivitySelect">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+                    تصنيف الفرص حسب النشاط الرئيسي:
+                </label>
+                <select id="forasActivitySelect">
+                    <option value="all">جميع الأنشطة الرئيسية</option>
+                </select>
+            </div>
+
+            <!-- الكاتيجوري الثالث: النشاط الفرعي (قائمة منسدلة) -->
+            <div class="category-group-box">
+                <label for="forasSubActivitySelect">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+                    تصنيف الفرص حسب النشاط الفرعي:
+                </label>
+                <select id="forasSubActivitySelect">
+                    <option value="all">جميع الأنشطة الفرعية</option>
+                </select>
+            </div>
+
+            <!-- بحث وترتيب نتائج الفرص -->
+            <div class="category-group-box">
+                <label>
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    البحث والنتائج في طبقة الفرص:
+                </label>
+                <div style="display: flex; gap: 6px;">
+                    <div style="flex: 1;">
+                        <label for="searchFieldForas" style="font-size: 0.75rem;">البحث في حقل:</label>
+                        <select id="searchFieldForas" style="padding: 6px; font-size: 0.75rem;">
+                            <option value="all">جميع البيانات</option>
+                            <option value="رقم الفرصة">رقم الفرصة</option>
+                            <option value="موعد اعلان الفرصة الاستثمارية">موعد اعلان الفرصة الاستثمارية</option>
+                            <option value="رقم العقد">رقم العقد</option>
+                            <option value="المساحة">المساحة</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1.5;">
+                        <label for="searchInputForas" style="font-size: 0.75rem;">كلمة البحث:</label>
+                        <input type="text" id="searchInputForas" placeholder="اكتب للبحث..." style="padding: 6px; font-size: 0.75rem;">
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size: 0.75rem;">نتائج البحث للفرص الاستثمارية (<span id="resultCountForas">0</span>):</label>
+                    <div class="results-container" id="resultsListForas">
+                        <div style="padding: 8px; text-align: center; color: var(--text-color); opacity: 0.6; font-size: 0.75rem;">جاري تحميل البيانات...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- التبويب الجديد: الزوائد -->
+        <div class="tab-content" id="tabZwaed">
+            <!-- تصنيف الزوائد حسب النوع (حسب عمود حالة الاستثمار) -->
+            <div class="category-group-box">
+                <label>تصنيف الزوائد حسب النوع:</label>
+                <div class="categories-bar" id="zwaedStatusChips">
+                    <div class="cat-chip active" data-type="zwaedStatus" data-val="all">جميع الزوائد</div>
+                </div>
+            </div>
+
+            <!-- تصنيف الزوائد حسب البلدية (حسب عمود البلدية) -->
+            <div class="category-group-box">
+                <label>تصنيف الزوائد حسب البلدية:</label>
+                <div class="categories-bar" id="zwaedMunicipalityChips">
+                    <div class="cat-chip active" data-type="zwaedMunicipality" data-val="all">جميع البلديات</div>
+                </div>
+            </div>
+
+            <!-- حقول البحث للزوائد (حسب الطلب: رقم القطعة من المخطط، رقم المخطط، حالة الاستثمار، SHAPE_Area) -->
+            <div class="category-group-box">
+                <label>
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    بحث الزوائد:
+                </label>
+                <div class="search-group">
+                    <label for="searchFieldZwaed" style="font-size: 0.75rem;">البحث في حقل:</label>
+                    <select id="searchFieldZwaed" style="padding: 6px; font-size: 0.75rem;">
+                        <option value="رقم قطعة الأرض من المخطط">رقم القطعة من المخطط</option>
+                        <option value="رقم المخطط">رقم المخطط</option>
+                        <option value="حالة الاستثمار">حالة الاستثمار</option>
+                        <option value="SHAPE_Area">SHAPE_Area</option>
+                    </select>
+                </div>
+
+                <div class="search-group" id="normalSearchGroupZwaed">
+                    <label for="searchInputZwaed" style="font-size: 0.75rem;">كلمة البحث:</label>
+                    <input type="text" id="searchInputZwaed" placeholder="اكتب للبحث..." style="padding: 6px; font-size: 0.75rem;">
+                </div>
+
+                <div class="search-group" id="areaSearchGroupZwaed" style="display: none;">
+                    <label style="font-size: 0.75rem;">معامل المساحة:</label>
+                    <div style="display: flex; gap: 4px; margin-bottom: 4px;">
+                        <select id="areaOperatorZwaed" style="flex: 1; padding: 6px; font-size: 0.75rem;">
+                            <option value="=">يساوي</option>
+                            <option value=">">أكبر من</option>
+                            <option value="<">أصغر من</option>
+                            <option value="between">بين قيمتين</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 4px;">
+                        <input type="number" id="areaVal1Zwaed" placeholder="القيمة" style="flex: 1; padding: 6px; font-size: 0.75rem;">
+                        <input type="number" id="areaVal2Zwaed" placeholder="إلى" style="flex: 1; display: none; padding: 6px; font-size: 0.75rem;">
+                    </div>
+                </div>
+
+                <div>
+                    <label style="font-size: 0.75rem;">نتائج البحث للزوائد (<span id="resultCountZwaed">0</span>):</label>
+                    <div class="results-container" id="resultsListZwaed">
+                        <div style="padding: 8px; text-align: center; color: var(--text-color); opacity: 0.6; font-size: 0.75rem;">جاري تحميل البيانات...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Row -->
+        <div class="export-row" style="justify-content: space-between;">
+            <span style="font-size: 0.78rem; font-weight: bold; color: var(--text-color);">تصدير التقارير:</span>
+            <div style="display: flex; gap: 6px;">
+                <button class="action-chip-btn" id="exportExcelBtn" title="تصدير النتائج إلى Excel">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                    Excel
+                </button>
+                <button class="action-chip-btn" id="exportPdfBtn" title="تصدير النتائج إلى PDF">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1.5h1.5V13H19v1.5h2V16h-5V7h5v1.5z"/></svg>
+                    PDF
+                </button>
+            </div>
+        </div>
+
+        <div class="details-box" id="contractDetails" style="background: #D6B87E;">
+            <div class="details-header">
+                <h3>تفاصيل العنصر المحدد</h3>
+                <button class="action-chip-btn" id="printDetailsBtn" style="padding: 4px 8px; font-size: 0.7rem;" title="طباعة تفاصيل العنصر PDF" onclick="printDetails()">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
+                    طباعة / PDF
+                </button>
+            </div>
+            <div style="color: var(--text-color); opacity: 0.6; font-size: 0.68rem;">اختر عنصراً من القائمة أو الخريطة لعرض التفاصيل</div>
+        </div>
+    </div>
+
+    <div class="map-container" id="mapContainerWrapper">
+        <div class="map-top-controls">
+            <div class="export-map-dropdown" id="exportMapDropdown">
+                <button class="map-overlay-btn" id="exportMapToggleBtn">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                    تصدير خريطة ▼
+                </button>
+                <div class="export-map-content">
+                    <button onclick="exportMapQuality('standard')">قياسي (Standard)</button>
+                    <button onclick="exportMapQuality('4k')">عالي الجودة 4K</button>
+                    <button onclick="exportMapQuality('8k')">عالي الجودة 8K</button>
+                </div>
+            </div>
+            <!-- زر لوحة المؤشرات المضاف بجوار زر تصدير الخريطة -->
+            <button class="map-overlay-btn" id="openDashboardModalBtn" title="لوحة المؤشرات الشاملة">
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                لوحة المؤشرات
+            </button>
+            <!-- تعديل زر الرسوم البيانية ليصبح قائمة منسدلة -->
+            <div class="export-map-dropdown" id="exportChartDropdown">
+                <button class="map-overlay-btn" id="openChartModalBtn">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                    الرسوم البيانية ▼
+                </button>
+                <div class="export-map-content" id="chartDropdownContent">
+                    <button onclick="openChartCategory('points')">عقود الإستثمار</button>
+                    <button onclick="openChartCategory('polygons')">الأصول والأراضي</button>
+                    <button onclick="openChartCategory('foras')">الفرص الإستثمارية</button>
+                    <button onclick="openChartCategory('zwaed')">الزوائد</button>
+                </div>
+            </div>
+        </div>
+        <!-- مفتاح الخريطة (KEY) أسفل يسار اللوحة -->
+        <div class="map-legend-container" id="mapLegendContainer"></div>
+        <div id="map"></div>
+    </div>
+</div>
+
+<!-- Chart Modal -->
+<div class="modal-backdrop" id="chartModal">
+    <div class="modal-content" id="chartModalContent">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <h3 id="chartModalTitle" style="margin: 0;">الرسوم البيانية والإحصائيات الشاملة لعقود الإستثمار</h3>
+                <!-- أزرار حفظ الرسم البياني JPEG و SVG بجوار اسم الرسم البياني -->
+                <div style="display: flex; gap: 4px;">
+                    <button class="action-chip-btn" style="padding: 4px 8px; font-size: 0.7rem;" onclick="saveChartImage('jpeg')" title="حفظ الرسم البياني JPEG">JPEG</button>
+                    <button class="action-chip-btn" style="padding: 4px 8px; font-size: 0.7rem;" onclick="saveChartImage('svg')" title="حفظ الرسم البياني SVG">SVG</button>
+                </div>
+            </div>
+            <button class="close-modal" id="closeChartModal">&times;</button>
+        </div>
+        <!-- أزرار عقود الاستثمار المطلوبة -->
+        <div id="pointsChartSubButtons" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 5px;">
+            <button class="tab-btn active" onclick="renderPointsSubChart('نوع العقد')">نوع العقد</button>
+            <button class="tab-btn" onclick="renderPointsSubChart('مصدر العقد')">مصدر العقد</button>
+            <button class="tab-btn" onclick="renderPointsSubChart('مدة العقد')">مدة العقد</button>
+            <button class="tab-btn" onclick="renderPointsSubChart('حالة سريان العقد')">حالة سريان العقد</button>
+            <button class="tab-btn" onclick="renderPointsSubChart('القيمة السنوية للعقد')">القيمة السنوية للعقد</button>
+            <button class="tab-btn" onclick="renderPointsSubChart('تاريخ بداية العقد')">تاريخ بداية العقد</button>
+            <button class="tab-btn" onclick="renderPointsSubChart('تاريخ نهاية العقد')">تاريخ نهاية العقد</button>
+        </div>
+        <!-- أزرار الأصول والأراضي المطلوبة -->
+        <div id="polygonsChartSubButtons" style="display: none; gap: 6px; flex-wrap: wrap; margin-bottom: 5px;">
+            <button class="tab-btn active" onclick="renderPolygonsSubChart('رقم المخطط')">رقم المخطط				</button>
+            <button class="tab-btn" onclick="renderPolygonsSubChart('حالة الاستثمار')">تصنيف العقود حسب حالة الاستثمار</button>
+            <button class="tab-btn" onclick="renderPolygonsSubChart('البلدية')">تصنيف الأصول حسب البلدية</button>
+            <button class="tab-btn" onclick="renderPolygonsSubChart('SHAPE_Area')">تصنيف العقود حسب المساحة</button>
+        </div>
+        <!-- أزرار الفرص الاستثمارية المطلوبة -->
+        <div id="forasChartSubButtons" style="display: none; gap: 6px; flex-wrap: wrap; margin-bottom: 5px;">
+            <button class="tab-btn active" onclick="renderForasSubChart('حالة الفرصة')">حالة الفرصة</button>
+            <button class="tab-btn" onclick="renderForasSubChart('موعد اعلان الفرصة الاستثمارية')">موعد اعلان الفرصة الاستثمارية</button>
+            <button class="tab-btn" onclick="renderForasSubChart('النشاط الرئيسي')">النشاط الرئيسي</button>
+            <button class="tab-btn" onclick="renderForasSubChart('النشاط الفرعي')">النشاط الفرعي</button>
+            <button class="tab-btn" onclick="renderForasSubChart('إجمالي عدد المستثمرين الذين اشتروا الكراسة')">عدد المستثمرين الذين اشتروا الكراسة</button>
+            <button class="tab-btn" onclick="renderForasSubChart('إجمالي عدد المستثمرين المتقدمين بالعطاءات')">عدد العطاءات</button>
+        </div>
+        <!-- أزرار الزوائد المطلوبة -->
+        <div id="zwaedChartSubButtons" style="display: none; gap: 6px; flex-wrap: wrap; margin-bottom: 5px;">
+            <button class="tab-btn active" onclick="renderZwaedSubChart('حالة الاستثمار')">تصنيف الزوائد حسب النوع</button>
+            <button class="tab-btn" onclick="renderZwaedSubChart('البلدية')">تصنيف الزوائد حسب البلدية</button>
+            <button class="tab-btn" onclick="renderZwaedSubChart('SHAPE_Area')">تصنيف الزوائد حسب المساحة</button>
+        </div>
+        <div style="display: none; gap: 10px; flex-wrap: wrap;" id="generalChartTabs">
+            <button class="tab-btn active" id="chartTabPoints" onclick="switchChartType('points')">عقود الاستثمار</button>
+            <button class="tab-btn" id="chartTabPolygons" onclick="switchChartType('polygons')">الأصول والأراضي</button>
+            <button class="tab-btn" id="chartTabForas" onclick="switchChartType('foras')">الفرص الاستثمارية</button>
+            <button class="tab-btn" id="chartTabZwaed" onclick="switchChartType('zwaed')">الزوائد</button>
+        </div>
+        <div class="chart-container" id="chartContainerDiv">
+            <canvas id="statChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Dashboard Modal الجديد لعرض جميع المؤشرات والرسوم البيانية -->
+<div class="modal-backdrop" id="dashboardModal">
+    <div class="modal-content" style="max-width: 2000px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <h3 style="margin: 0; color: var(--primary-color);">لوحة المؤشرات والرسوم البيانية الشاملة</h3>
+                <div style="display: flex; gap: 4px;">
+                    <button class="action-chip-btn" style="padding: 4px 8px; font-size: 0.7rem;" onclick="saveDashboardImage('jpeg')" title="حفظ لوحة المؤشرات JPEG">JPEG</button>
+                    <button class="action-chip-btn" style="padding: 4px 8px; font-size: 0.7rem;" onclick="saveDashboardImage('svg')" title="حفظ لوحة المؤشرات SVG">SVG</button>
+                </div>
+            </div>
+            <button class="close-modal" id="closeDashboardModal">&times;</button>
+        </div>
+        <div style="overflow-y: auto; flex-grow: 1; padding: 10px;" id="dashboardScrollWrapper">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; align-content: start;" id="dashboardChartsGrid">
+                <!-- سيتم تعبئة كافة الرسوم البيانية ديناميكياً هنا -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fullscreen Chart Modal -->
+<div class="modal-backdrop" id="fullscreenChartModal">
+    <div class="modal-content" style="max-width: 1800px; width: 90%; height: 80vh; display: flex; flex-direction: column;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <h3 id="fullscreenChartTitle" style="margin: 0; color: var(--primary-color);">تكبير الرسم البياني</h3>
+                <div style="display: flex; gap: 4px;">
+                    <button class="action-chip-btn" style="padding: 4px 8px; font-size: 0.7rem;" onclick="saveFullscreenChartImage('jpeg')" title="حفظ الرسم البياني JPEG">JPEG</button>
+                    <button class="action-chip-btn" style="padding: 4px 8px; font-size: 0.7rem;" onclick="saveFullscreenChartImage('svg')" title="حفظ الرسم البياني SVG">SVG</button>
+                </div>
+            </div>
+            <button class="close-modal" id="closeFullscreenChartModal">&times;</button>
+        </div>
+        <div style="position: relative; flex-grow: 1; width: 100%; background: #fff; border-radius: 8px; padding: 10px;">
+            <canvas id="fullscreenStatChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script src="data.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
